@@ -1,0 +1,31 @@
+#include <iostream>
+#include <time.h>
+
+using namespace std;
+
+int main(int argc, char* argv[])
+{
+	int i, j, n, m, **a;
+
+	
+	printf("n:");
+	scanf_s("%d", &n);
+	a = (int**)malloc(n*sizeof(int*));
+	for (i = 0; i<n; i++)
+	{
+		printf("N%d:", i + 1);
+		scanf_s("%d", &m);
+		a[i] = (int*)malloc((m + 1)*sizeof(int));
+		*a[i] = m;
+		for (j = 1; j <= m; j++) a[i][j] = rand() % 19 - 9;
+	}
+	for (i = 0; i<n; i++, printf("\n"))
+	{
+		m = *a[i];
+		for (j = 1; j <= m; j++) printf("%3d", a[i][j]);
+	}
+	system("pause");
+	for (i = 0; i<n; i++) free(a[i]);
+	free(a);
+	return 0;
+}
