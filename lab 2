@@ -1,24 +1,85 @@
 #include <iostream>
-
 using namespace std;
-
-int main()
+//Для задания непрямоугольной матрицы
+struct Line{
+  int n;
+  double *ar;
+//  Line *matr;
+};
+//Функция ввода целого числа
+istream& input(int&a) {
+  while(!(cin>>a)){
+    if(cin.eof()) break;
+    cin.clear();
+    cin.ignore();
+  }
+  return cin;
+}
+//Функция ввода вещественного числа
+istream& input(double&a) {
+  while(!(cin>>a)){
+    if(cin.eof()) break;
+    cin.clear();
+    cin.ignore();
+  }
+  return cin;
+}
+//Ввод количества строк
+int input() {
+  int n;
+  const char *pr="";
+  do{
+    cout<<pr;
+    pr="error!!!";
+    cout<<"enter number of int:";
+    input(n);
+  } while(n<=0);
+  return n;
+}
+//Ввод матрицы
+int input(Line*&p)
 {
-	int i, j, N, M, a[20][20];
-	cout << "N="; 
-	cin >> N;
-	cout << "M=";
-	cin >> M;
-	cout << "Input matrix A \n";
-	for (i = 0; i < N; i++)		
-		for (j = 0; j < M; j++)
-			cin >> a[i][j]; 
-	for (i = 0; i < N; i++)
-	{
-		
-		for (j = 0; j < M; j++)
-			cout << a[i][j] << "\t"; 
-		cout << endl; 
-	}
-	return 0;
+  int m=input();
+  p=new Line[m];
+  for(int i=0; i<m; ++i){
+    p[i].n=input();
+    p[i].ar=new double[p[i].n];
+    for(int j=0; j<p[i].n; ++j) input(p[i].ar[j]);
+  }
+  return m;
+}
+int main() {
+  Line *a;             //Переменная для матрицы
+  int m=input(a);      //Ввод матрицы, вернуть количество строк
+  int *b = new int[m]; //Выделить память под вектор
+  for(int k=0;k<m;k++) { //Цикл по строкам
+    b[k]=a[k].n;         //Начальное значение элемента вектора для строки
+    for(int i=0;i<a[k].n;i++) { //Цикл по элементам текущей строки
+      int l=k+1;         //Номер следующей строки
+      if (l==m) l=0;     //Последняя строка сравнивается с нулевой строкой
+      for(int j=0;j<a[l].n;j++) { //Цикл по элементам следующей строки
+        if (a[k].ar[i]==a[l].ar[j]) { //Если элементы совпадают,
+          b[k]--;                 //значит несовпадающих на 1 меньше
+          break;       //Дальше можно не смотреть, переходим к следующему элементу текущей строки
+        }
+      }
+    }
+  }
+  //Вывод содержимого матрицы
+  cout<<endl<<"a=";
+  for (int i=0;i<m;i++) {
+    cout<<endl<<"(";
+    for (int j=0;j<a[i].n;j++) {
+      cout<<a[i].ar[j]<<" ";
+    }
+    cout<<")";
+  }
+  cout<<endl;
+  
+  //Вывод содержимого вектора
+  cout<<endl<<"b=(";
+  for (int i=0;i<m;i++) {
+    cout<<b[i]<<" ";
+  }
+  cout<<")"<<endl;
 }
