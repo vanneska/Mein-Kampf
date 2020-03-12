@@ -1,0 +1,50 @@
+#include <iostream>
+#include <string.h>
+using namespace std;
+struct Elem 
+{
+	char ch;    
+	Elem* next; 
+};
+
+Elem* GetLine()
+{
+	char s[256];           
+	Elem* Elem0 = 0;    
+	Elem* ElemCurr = 0;         
+	Elem* ElemPrev = 0;         
+	cin.getline(s, 256);        
+	for (int i = 0; i < strlen(s); i++) 
+	{
+		ElemCurr = new Elem;       
+		ElemCurr->ch = s[i];    
+		if (ElemPrev) {          
+			ElemPrev->next = ElemCurr; 
+		}
+		else {
+			Elem0 = ElemCurr;          
+		}
+		ElemPrev = ElemCurr;
+	}
+	if (Elem0) ElemCurr->next = 0;
+	return Elem0;
+}
+void PrintLine(Elem* ElemCurr)
+	{
+		while (ElemCurr) {
+			cout << ElemCurr->ch;
+			ElemCurr = ElemCurr->next;
+		}
+		cout << endl;
+	}
+ 
+	int main(int argc, char** argv)
+	{
+		Elem* ElemFirst = GetLine();
+
+			if (ElemFirst) 
+			{
+				PrintLine(ElemFirst);
+		}
+			system("pause");
+	}
