@@ -1,144 +1,56 @@
 #include <iostream>
-#include <string.h>
+
 using namespace std;
-struct Elem //Элемент списка
-{ 
-    char ch;    //символ строки
-    Elem* next; //Указатель на следующий элемент
-};
-//Создать список
-Elem* GetLine()
-{
-    char s[256];                 //Временная строка
-    Elem* Elem0 = 0;             //Указатель на первый элемент
-    Elem* ElemCurr = 0;          //Указатель на текущий элемент
-    Elem* ElemPrev = 0;          //Указатель на предыдущий элемент
-    cin.getline(s, 256);          //Считаем строку
-    for (int i = 0; i < strlen(s); i++) //Пробежимся по каждому символу строки
-    { 
-        ElemCurr = new Elem;       //Выделим память для элемента списка
-        ElemCurr->ch = s[i];       //Сохранить символ в списке
-        if (ElemPrev) {            //Если определён предыдущий элемент
-            ElemPrev->next = ElemCurr; //Сослаться на текущий элемент
+const int SIZE = 80;
+
+void form(char* in, char* outDigits, char* outLetters);
+char* skip(char* str);
+char* copyDigits(char*& from, char* to);
+char* copyLetters(char*& from, char* to);
+
+int main() {
+    char buf[SIZE], outDigits[SIZE], outLetters[SIZE];
+    while (cout << "Enter string: ", cin.getline(buf, SIZE)) {
+        form(buf, outDigits, outLetters);
+        cout << "Result string: " << outDigits << endl << outLetters << endl;
+    }
+}
+
+void form(char* in, char* outDigits, char* outLetters) {
+    while (*(in = skip(in))) {
+        if (*in >= '0' && *in <= '9') {
+            outDigits = copyDigits(in, outDigits);
         }
         else {
-            Elem0 = ElemCurr;          //Или запомнить как первый элемент
-        }
-        ElemPrev = ElemCurr;
-    }
-    if (Elem0) ElemCurr->next = 0; //Если список не пустой, то завершить как NULL
-    return Elem0;
-}
-//Удалить число или разделители, начиная с текущего элемента
-//где r = 0 - число, 1 - разделитель
-Elem* DelElems(Elem* Elem1, int r)
-{
-    int r1;
-    Elem* Elem2;
-    while (Elem1) //Пока не конец списка
-    {      
-        r1 = (Elem1->ch == ' ' || Elem1->ch == '\t') ? 1 : 0; //цифра или разделитель?
-        if (r1 != r) break;  //Досрочный выход
-        Elem2 = Elem1;       //Запомним элемент для удаления
-        Elem1 = Elem1->next; //Перейдём на следующий элемент
-        delete Elem2;      //Удалить элемент
-    }
-    return Elem1;        //Указатель на первый неудалённый элемент
-}
-//Обработка строк
-Elem* ProcessLine(Elem* Elem0)
-{
-    if (!Elem0) return 0;      //Если список пустой, то выйти
-    int NumWrong = 0;            //Флаг на число не прошедшее критерий
-    Elem* ElemCurr = Elem0;      //Запомним начало списка
-    Elem* ElemPrev = Elem0;      //Указатель на предыдущий элемент
-    Elem* ElemBeforeNum = 0;     //Указатель на элемент перед текущим числом
-    while (1) {                    //Переберём все элементы
-        if ((!ElemCurr) || (ElemCurr->ch == '\t') || (ElemCurr->ch == ' ')) //Если встретился разделитель или конец списка
-        {
-            if (ElemCurr == Elem0) {     //Если элемент первый, то
-                Elem0 = DelElems(Elem0, 1); //Удалить разделители в начале списка
-                if (!Elem0) return 0;    //Если список опустел, то выйти
-                ElemCurr = Elem0;          //Текущий элемент - начало списка
-                ElemPrev = Elem0;          //Предыдущий элемент - начало списка
-                continue;                //Опять проверить первый элемент
-            }
-            else {             //Число закончилось
-                if (ElemCurr) {    //Если не конец списка,
-                    ElemCurr->next = DelElems(ElemCurr->next, 1); //то удалить лишние разделители,
-                    if (!ElemCurr->next) { //Если список закончился,
-                        delete ElemCurr;     //то удалить последний разделитель
-                        ElemPrev->next = 0;
-                        ElemCurr = 0;
-                    }
-                    else {
-                        ElemCurr->ch = ' ';  //иначе, заменить оставшийся разделитель на пробел
-                    }
-                }
-                if (NumWrong) {         //Если число не удовлетворяет критерию, то удалить его
-                    if (!ElemBeforeNum) { //Если число в начале строки,
-                        Elem0 = DelElems(Elem0, 0);  //То удалить всё число, и переместить начало списка
-                        ElemPrev = Elem0;
-                        ElemCurr = Elem0;
-                    }
-                    else {              //Если число не в начале строки
-                        ElemBeforeNum->next = DelElems(ElemBeforeNum->next, 0); //то удалить всё число от разделителя
-                        ElemCurr = ElemBeforeNum;     //Текущий элемент - пробел стоявший перед числом
-                        ElemPrev = Elem0;             //С начала списка
-                        while (ElemPrev->next != ElemCurr) ElemPrev = ElemPrev->next; //найдём элемент перед текущим
-                    }
-                    NumWrong = 0;           //Сбросить флаг критерия отбора
-                    continue;             //Опять проверим текущий элемент
-                }
-            }
-        }
-        else {                      //цифра
-            if ((ElemCurr->ch < '0') || (ElemCurr->ch > '9')) NumWrong = 1; //Любой другой символ кроме цифры нарушает критерий отбора.
-            if (ElemPrev->ch == ' ') {    //Если цифра первая в числе, а число не первое
-                ElemBeforeNum = ElemPrev; //то запомнить указатель на разделитель перед числом
-            }
-            else {                    //цифра не первая в числе
-                if (ElemCurr->ch < ElemPrev->ch) NumWrong = 1;   //Если цифры в числе убывают, то поднять флаг нарушения критерия отбора
-            }
-        }
-        if (!ElemCurr) break;      //Выйти, если список закончился
-        ElemPrev = ElemCurr;       //Запомним текущий элемент как предыдущий
-        ElemCurr = ElemCurr->next; //Следующий элемент
-    }
-    return Elem0; //Вернуть указатель на начало списка
-}
-//Вывод результата
-void PrintLine(Elem* ElemCurr)
-{
-    while (ElemCurr) {
-        cout << ElemCurr->ch;
-        ElemCurr = ElemCurr->next;
-    }
-    cout << endl;
-}
-//Очистить память
-void FreeElems(Elem* ElemCurr)
-{
-    Elem* Elem0;
-    while (ElemCurr) {
-        Elem0 = ElemCurr;
-        ElemCurr = ElemCurr->next;
-        delete(Elem0);
-    }
-}
-int main(int argc, char** argv)
-{
-    while (1) {
-        //Создать список
-        Elem* ElemFirst = GetLine();
-        if (cin.eof()) break; //Если конец ввода/файла, то выйти
-        if (ElemFirst) { //Если список не пустой
-          //Обработка строк
-            ElemFirst = ProcessLine(ElemFirst);
-            //Вывод результата
-            PrintLine(ElemFirst);
-            //Очистить память
-            FreeElems(ElemFirst);
+            outLetters = copyLetters(in, outLetters);
         }
     }
+    *outDigits = '\0';
+    *outLetters = '\0';
+}
+
+char* skip(char* str)
+{
+    while (*str && ((*str < '0' || *str>'9') && (*str < 'A' || *str>'Z') && (*str < 'a' || *str>'z'))) {
+        str++;
+    }
+    return str;
+}
+
+char* copyDigits(char*& from, char* to)
+{
+    while (*from >= '0' && *from <= '9') {
+        *to++ = *from++;
+    }
+    *to++ = ' ';
+    return to;
+}
+
+char* copyLetters(char*& from, char* to)
+{
+    while (*from >= 'A' && *from <= 'Z' || *from >= 'a' && *from <= 'z') {
+        *to++ = *from++;
+    }
+    *to++ = ' ';
+    return to;
 }
