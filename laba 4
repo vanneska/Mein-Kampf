@@ -1,0 +1,269 @@
+#include <locale>
+#include <iostream>
+#include <stdio.h>
+#include <string.h>
+using namespace std;
+void ReadTableFromFile(void);
+void WriteTableToFile(void);
+bool Find(int, int*);
+void AddElement(void);
+void DelElement(void);
+void OutTable(void);
+void Exit(void);
+int GetNum(void);
+const int   SIZE = 10;   //максимальный размер таблицы
+typedef struct Item
+{
+   int      key;      //ключ элемента
+   int      seek;      //смещение в файле поля info
+   int      len;      //длина info
+}ITEM;
+const char *mesMain[] =      //сообщения меню
+{
+   "Добавить новый элемент",
+   "Удалить элемент",
+   "Вывести таблицу",
+   "Выход"
+};
+//количество пунктов меню
+int MesMainCount = sizeof( mesMain ) / sizeof( mesMain[0] );
+//функции отработки пунктов меню
+void ( *funcMain[] )() ={AddElement, DelElement, OutTable, Exit};
+int      count = 0;      //количество задействованных элементов таблицы
+ITEM   table[SIZE];   //таблица
+FILE   *file = NULL;   //указатель на открытый файл
+char   fName[256];      //имя файла
+//чтение таблицы из файла
+//формат файла:
+//int   count         - количество задействованных элементов таблицы
+//ITEM   table[SIZE]      - таблица (вся)
+//...               - строки info
+void ReadTableFromFile()
+{
+   cout << "Введите имя файла: ";
+   cin.getline(fName, 256);   //вводим имя файла
+   file = fopen(fName, "r+b");   //открываем на чтение/запись, тип двоичный
+   if (NULL == file)         //если нет такого
+   {
+      file = fopen(fName, "w+b");   //то создаем новый файл
+      if (file)               //создался?
+      {                     //запишем файл с пустой таблицей
+         count = 0;            //обнулим количество (на всякий случай)
+         fwrite(&count, sizeof(int), 1, file);   //количество
+         fwrite(table, sizeof(ITEM), SIZE, file);//таблица
+      }
+      else
+         cout << "Ошибка создания файла" << endl;
+   }
+   else
+   {                        //файл есть
+      fread(&count, sizeof(int), 1, file);      //читаем количество
+      fread(table, sizeof(ITEM), SIZE, file);      //и таблицу
+   }
+   fclose(file);               //файл закрываем
+}
+//запись таблицы в файл (в конце работы)
+void WriteTableToFile()
+{
+   if (fName[0])               //проверим на наличие имени файла
+   {
+      file = fopen(fName, "r+b");   //открываем на чтение/запись
+      if (file)               //открылся?
+      {
+         fwrite(&count, sizeof(int), 1, file);   //пишем количество
+         fwrite(table, sizeof(ITEM), SIZE, file);//и таблицу
+         fclose(file);         //файл закрываем
+      }
+      else
+         cout << "Ошибка открытия" << endl;
+   }
+   else
+      cout << "Имя файла не задано" << endl;
+}
+//поиск по таблице в памяти элемента с заданным ключем
+//использован агоритм двоичного поиска
+//возвращает true, если найдено, и индекс найденного элемента
+//false, если не найдено, и индекс, куда надо вставить новый элемент!
+//элементы в таблице сортируются по возрастанию ключей
+bool Find(int key, int *idx)
+{
+   int first = 0;      /* Первый элемент в массиве */
+    int last = count;   /* Элемент в массиве, СЛЕДУЮЩИЙ ЗА последним */
+                  /* Если просматриваемый участок непустой, first<last */
+    int   mid; 
+ 
+   if ((count == 0) || (table[0].key > key))
+   {
+      /* массив пуст или меньше всех, надо вставить его в позицию 0    */
+      *idx = 0;
+      return false;
+   } 
+   else if (table[count-1].key < key)
+    {
+      /* больше всех, надо вставить его в позицию count    */
+      *idx = count;
+      return false;
+   }
+ 
+   //где-то в середине...
+   while (first < last)
+   {
+      /* ВНИМАНИЕ! В отличие от более простого (first+last)/2, этот код стоек к переполнениям.
+         Если first и last знаковые, возможен код (unsigned)(first+last) >> 1.    */
+      mid = first + (last - first) / 2;
+ 
+      if (key <= table[mid].key)
+         last = mid;
+      else
+         first = mid + 1;
+    }
+ 
+    if (table[last].key == key)
+    {
+      /* Искомый элемент найден. last - искомый индекс */
+      *idx = last;
+      return true;
+    } 
+   else
+   {
+      /* Искомый элемент не найден. Его место - last.  */
+      *idx = last;
+      return false;
+   }
+}
+//добавление элемента в таблицу
+void AddElement()
+{
+   int      i, idx, num;
+   char   str[80];
+   if (count < SIZE)            //есть ли место в таблице?
+   {
+      cout << "Введите ключ элемента: ";
+      num = GetNum();            //вводим ключ нового элемента
+      if (Find(num, &idx))      //есть ли такой в таблице и получаем индекс, куда вставлять
+      {
+         cout << "Элемент с таким ключем уже есть" << endl;
+         return;
+      }
+      if (count)               //если что-то есть
+         for (i=count-1; i>=idx; i--)   //то смещаем на одну позицию к концу
+            table[i+1] = table[i];      //тем самым, освобождаем место для нового
+      table[idx].key = num;      //запоминаем ключ
+      cout << "Введите строку: ";
+      cin.ignore();            //сбросим все лишнее на входе
+      cin.getline(str, 80);      //вводим строку
+                           //запишем данные в элемент таблицы и в файл
+      if (fName[0])            //проверим на наличие имени файла
+      {
+         file = fopen(fName, "r+b");   //открываем
+         if (file)               //открылся?
+         {
+            fseek(file, 0, SEEK_END);            //становимся в конец файла
+            table[idx].seek = ftell(file);         //запоминаем позицию конца файла, как
+                                          // смещение в файле поля info
+            table[idx].len = strlen(str)+1;         //запоминаем длину строки
+            fwrite(str, table[idx].len, 1, file);   //и пишем строку в конец файла
+            fclose(file);                     //закрываем файл
+            count++;                        //считаем элементы таблицы
+         }
+         else
+            cout << "Ошибка открытия" << endl;
+      }
+      else
+         cout << "Имя файла не задано" << endl;
+   }
+   else
+      cout << "Таблица полностью заполнена" << endl;
+}
+//удаление элемента таблицы по ключу
+void DelElement()
+{
+   int      idx, num;
+   cout << "Введите ключ элемента: ";
+   num = GetNum();               //вводим ключ   
+   if (!Find(num, &idx))         //есть такой? Заодно узнаем индекс элемента
+   {
+      cout << "Элемент с таким ключем отсутствует" << endl;
+      return;
+   }
+   for (; idx<count-1; idx++)      //смещаем на одну позицию к началу
+      table[idx] = table[idx+1];   //тем самым, удаляем элемент
+   count--;                  //уменьшаем счетчик элементов
+   cout << "Элемент удален" << endl;
+}
+//вывод всей таблицы на экран
+void OutTable()
+{
+   char   str[80];
+   if (count)               //что-то есть?
+   {
+      if (fName[0])         //имя файла задано?
+      {
+         file = fopen(fName, "r+b");   //открываем файл
+         if (file)               //открылся?
+         {
+            for(int i=0; i<count; i++)   //по всем элементам
+            {
+                                 //читаем строку из файла
+               fseek(file, table[i].seek, SEEK_SET);   //в начало строки
+               fread(str, table[i].len, 1, file);      //читаем строку
+                                             //выводим элемент
+               cout << i << ": key = " << table[i].key << "\tinfo = " << str << endl;
+            }
+         }
+         else
+            cout << "Ошибка открытия" << endl;
+      }
+      else
+         cout << "Не задано имя файла" << endl;
+   }
+   else
+      cout << "Таблица пуста" << endl;
+}
+//конец работы
+void Exit()
+{
+   WriteTableToFile();      //сохраним таблицу в файле
+}
+//ввод целого числа с консоли
+int GetNum()
+{
+   int      a;
+   cin >> a;
+   while ( !( cin.good() || cin.eof() ) || ( a < 0 ) )
+   {
+      cout << "Введите число! " << endl;
+      cin.ignore();
+      cin >> a;
+   }
+   return a;
+}
+//вывод меню и ввод пункта меню
+int ViewMenu(const char* mes[], int max)
+{
+   int ret;
+   do
+   {
+      for ( int i = 0; i < max; i++ )
+         cout << i+1 << ". " << mes[i] << endl;
+      cout << "Ваш выбор: ";
+      ret = GetNum();
+   }
+   while ( ret < 1 || ret > max );   //проверяем на допустимость
+   return ret;                  //возвращаем номер пункта
+}
+int main()
+{
+   int ret;
+   setlocale(LC_ALL,"Russian");         //чтобы писалось по-русски
+   ReadTableFromFile();            //читаем таблицу из файла (или создаем новый)
+   do
+   {
+      ret = ViewMenu(mesMain, MesMainCount);   //рисуем меню и вводим пункт меню
+      funcMain[ret-1]();                  //отрабатываем пункт меню
+      cout << "--------------------------------" << endl;
+      if (ret == MesMainCount)   //Exit, как последний пункт меню?
+         break;               //уходим!
+   } while (ret);
+   return 0;
+}
