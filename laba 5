@@ -1,0 +1,701 @@
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <malloc.h>
+#include <conio.h>
+
+//структура для хранения узла дерева
+struct Node
+{
+ int  key;  //ключ
+ Node *parent; //ссылка на родителя, для root = 0
+ Node *left;  //ссылка на левого потомка
+ Node *right;  //ссылка на пр
+ авого потомка
+ Node *head;  //начало кольца одинаковых ключей
+ Node *tail;  //конец  кольца одинаковых ключей
+ char *str;  //адрес строки
+};
+
+//структура для отображения дерева
+struct OutTree
+{
+ Node *node;  //узел
+ int  level;  //уровень узла, 0 (корень), 1, 2,... 
+ int  offset;  //индексы поля, 0 для 0, 0,1 для 1, 0-3 для 2 и т.д.
+};
+
+Node *root = NULL; //корень дерева
+
+//-------------------------------------------------
+//п/п работы с деревом
+//-------------------------------------------------
+
+//поиск
+узла с указанным ключом в дереве, начиная с указанного
+Node * TreeSearch(Node * node, int iKey)
+{
+ // Если узел равен NULL, то нечего в нем искать. Так же и возвращаем. 
+ // Это нужно для поиска по несуществующим потомкам
+ if (node == NULL)
+  return node; 
+ 
+ // Если нашли, то возвращаем указатель на найденный узел.
+ if (node->key == iKey)
+  return node;
+ 
+ // Если ключ найден
+ ного узла больше того, который мы ищем
+ if (node->key > iKey)
+  // То искать в левом поддереве
+  return TreeSearch(node->left, iKey);
+ else 
+  // Иначе в правом поддереве
+  return TreeSearch(node->right, iKey);
+}
+
+//поиск узла с минимальным ключом
+//т.к. дерево двоичное, то достаточно пройти до конца по левым веткам
+Node * TreeMinimum(Node * node)
+{
+ while (node->left)  // Пока есть левый потомок
+  node = node->left; // Перейти к нему
+ return node;
+}
+
+//поиск
+узла с максимальным ключом
+//т.к. дерево двоичное, то достаточно пройти до конца по правым веткам
+Node * TreeMaximum(Node * node)
+{
+ while (node->right)  // Пока есть левый потомок
+  node = node->right; // Перейти к нему
+ return node;
+}
+
+//поиск очередного узла при поперечном обходе (по возрастанию ключей)
+Node * TreeNext(Node * node)
+{
+ Node *nodeParent;
+
+ // Если правое поддерево не пусто, то возврат
+ ить 
+ // узел с минимальным значением ключа из правого поддерева
+ if (node->right)
+  return TreeMinimum(node->right);
+  
+ nodeParent = node->parent;
+
+ // Перебирать родителей, пока не найден узел, 
+ // являющаяся левым потомком своего родителя 
+ // или пока не закончатся родители.
+ while (nodeParent && (node == nodeParent->right))
+ {
+  node = nodeParent;
+  nodeParent = nodeParent->parent;
+ }
+ 
+ // Возвратить родителя узла, являющегося левым потомком
+своего родителя
+ return nodeParent;
+}
+
+Node * CreateNode(int iKey, char * sInfo)
+{
+ Node * node;
+
+ //создаем новый узел (calloc очищает выделяемую память)
+ node = (Node*)calloc(1, sizeof(Node));
+ //заполняем поля
+ node->key = iKey;    //ключ
+ node->str = (char*)malloc(strlen(sInfo)+1);
+ strcpy(node->str, sInfo);  //инфо
+ return node;
+}
+
+//вставка узла с указанным ключом и данными
+void NodeInsert(int iKey, 
+ char * sInfo)
+{
+ Node *nodeParent = NULL;  //родитель текущего узла
+ Node *node = root;   //некущий узел
+ Node *nodeNew;    //
+новый узел
+  
+ // Пока ещё есть узлы, которые надо просмотреть, 
+ // то есть пока мы не добрались до “листочков” дерева
+ while (node)
+ {
+  nodeParent = node;   //текущий узел для потомков является родителем
+  // Выбираем узел, в зависимости от того,
+  // меньше или больше вставляемый ключ относительно текущего узла
+  if (iKey < node->key)
+   node = node->left;
+  else if (iKey > node->key)
+   node = node->right;
+  //если равно, то добавляем в конец кольца
+  else
+  {
+   nodeNew
+= CreateNode(iKey, sInfo); //создаем новый узел
+   if (node->tail)      //кольцо уже есть?
+   {
+    nodeNew->tail = node->tail;  //вставляем в конец цепочки кольца
+    nodeNew->head = node;   //правим ссылки
+    node->tail->head = nodeNew;
+    node->tail = nodeNew;
+   }
+   else        //не было - добавляем первое в кольцо
+   {
+    node->tail = node->head = nodeNew;
+    nodeNew->
+ ;head = nodeNew->tail = node;
+   }
+   //выходим
+   return;
+  }
+ }
+            //добавляем узел в дерево
+ nodeNew = CreateNode(iKey, sInfo);   //создаем
+ nodeNew->parent = nodeParent;    //родитель
+
+ if (nodeParent == NULL)  //если в дереве ещё нет узлов
+  root = nodeNew;   //то запомним, как корень
+ else
+ {
+  // Если ключ узла, который мы хотим вставить, 
+  // меньше ключа узла, потомком которого должна стать 
+  // вставляемый узел
+  if (iKey < nodeParent->key)
+   nodeParent->left
+= nodeNew; //то добавить в дерево как левого потомка
+  else
+   nodeParent->right = nodeNew;//иИначе добавить в дерево как правого потомка
+ }
+}
+
+//освободить память узла
+void FreeTree(Node * node)
+{
+ Node *nodeRing, *nodeNext;
+
+ if (node)     //если он есть, конечно
+ {
+  free(node->str);  //память поля инфо
+        //освободим память всех узлов в кольце
+  //кольцо обрабатываем, есл
+ и есть вообще и пока не дойдем до адреса нашего узла
+  for (nodeRing=node->head; nodeRing && (nodeRing!=node); 
+   nodeRing=nodeNext)
+  {
+    nodeNext = nodeRing->head; //запомним адрес следующего в кольце
+    free(nodeRing->str);  //освободим info
+    free(nodeRing);    //сам узел
+  }
+  FreeTree(node->left); //левого потомка
+  FreeTree(node->right); //правого потомка
+  free(node);    //память самого узла
+ }
+}
+
+//Удаление узла по ключу
+//Необходимо
+сохранить свойство упорядоченности ДДП. 
+//При удалении возможны три случая: 
+//1) у удаляемого узла нет потомков, 
+//2) у удаляемого узла есть один потомок и 
+//3) у удаляемого узла два потомка. 
+//Если потомков нет, то узел можно просто удалить. 
+//Если потомок один, то удаляемый узел можно “вырезать”, 
+//указав его родителю в качестве потомка единственного 
+//имеющегося потомка удаляемого узла. 
+//Если же потомков два, требуются дополнительны
+ е действия. 
+//Нужно найти следующий за удаляемым (по порядку ключей) узлом, 
+//скопировать его содержимое (ключ и данные) в удаляемый узел 
+//и удалить найденный узел (у него не будет левого потомка). 
+//
+//при наличии кольца удаляем "самого старого", т.е. того,
+//который основной (в дереве). Заместо него ставим первого в кольце
+bool NodeDelete(int iKey)
+{
+ char *pInfo;
+ Node *del, *nodeTemp;
+ Node *node = TreeSearch(root, iKey); //ищем узел с указанным ключом
+
+ if
+(node)  //проверим, есть ли такой
+ {
+  if (node->head)    //кольцо есть?
+  {
+   del = node;    //будем удалять основной узел
+   node = node->head;  //первого в кольце сделаем основным
+   nodeTemp = node->head; //сохраним адрес второго в кольце
+   pInfo = node->str;  //сохраним адрес info первого в кольце
+   *node = *del;   //скопируем все поля удаляемого в новый основной узел
+   node->str = pInfo;  //запишем адрес info
+ 
+   
+   if (nodeTemp == del) //в кольце только один узел?
+    node->head = node->tail = NULL; //кольца больше нет
+   else
+
+   {
+    node->head = nodeTemp;  //первым в кольце стовится бывший второй
+    del->tail->head = node;  //ссылка последнего в кольце на нового основного
+   }
+   
+   if (node->parent->left == del) //подправим ссылку родителя на нового основного
+    node->parent->left = node;
+   else
+    node->parent->right = node;
+
+   if (del->left)     //подправим ссылку потомков на нового основного
+    del->left->parent = node;
+   if (del->right)
+    del->right->parent
+= node;
+   
+   free(del->str);   //удаляем info
+  }
+  else      //кольца нет - удаляем узел
+  {
+   // Если потомков не более одного
+   if ((node->left == NULL) || (node->right == NULL))
+    del = node;    // физически удаляем текущий узел
+   else
+    del = TreeNext(node); // Иначе следующий
+  
+   if (del->left)    // Пытаемся найти хоть одного потомка
+    nodeTemp = del->left;
+   else
+ 
+    nodeTemp = del->right;
+  
+   // Если есть, родителем потомка делаем родителя 
+   // удаляемого узла
+   if (nodeTemp)
+    nodeTemp->parent = del->parent;
+  
+   // Если удаляем корень дерева, надо указать новый корень дерева
+   if (del->parent == NULL)
+    root = nodeTemp;
+   else
+   {
+    // Указываем родителю удаляемого узла в качестве потомка 
+    // потомок удаляемого узла
+    if (del->parent->left == del)
+     del->parent->left = nodeTemp;
+    else
+     del->parent->right
+= nodeTemp;
+   }
+
+   if (del != node)   //удаляемый узел с двумя потомками
+   {
+    free(node->str);  //освободим память под Info
+    node->key = del->key; //скопировать ключ
+    node->str = del->str; //Info со следующего узла
+    node->head = del->head; //кольцо
+    node->tail = del->tail;
+   }
+   else      //с одним или ни одного потомка
+    free(del->str
+ );   //освободим память под Info
+  }
+  free(del);     //освободим память узла
+  return 1;     //удалили!
+ }
+ return 0;      //ключ не найден
+}
+//----------------------------------------
+//подпрограммы, вызываемые из меню
+//----------------------------------------
+
+//добавление узла 
+void AddKey(void)
+{
+ int  iKey;
+ char sInfo[256];
+
+ //запросим ключ
+ printf("\nEnter key: ");
+ scanf("%d", &iKey);
+ //и Info
+ printf("Enter
+info: ");
+ do
+ {
+  gets(sInfo);
+ }while(0==sInfo[0]);   //строка должна быть непустой!
+ 
+ NodeInsert(iKey, sInfo);  //заносим в дерево
+ printf("Node added");
+}
+
+//удаление узла
+void DeleteKey(void)
+{
+ int  iKey;
+
+ if (root)      //проверим на существование дерева
+ {
+  printf("\nEnter key: "); //введем ключ
+  scanf("%d", &iKey);
+  if (NodeDelete(iKey))  //удаляем
+   printf("N
+ ode deleted");
+  else
+   printf("Key not found");
+ }
+ else
+  printf ("\nNo tree");
+}
+
+//вывод содержимого одного узла
+void PrintNode(Node * node)
+{
+ int  i;
+ Node *nodeRing;
+
+ //ключ и Info основного узла
+ printf("Key = %d, Info[0] = %s", node->key, node->str);
+ //кольцо (если есть)
+ for (i=1,nodeRing=node->head; nodeRing && (nodeRing!=node); 
+   nodeRing=nodeRing->head)
+  printf(", Info[%d%] = %s",
+i, nodeRing->str);
+}
+
+//поиск ключа в дереве
+void SearchKey(void)
+{
+ int  iKey;
+ Node *node;
+
+ if (root)      //проверим на существование дерева
+ {
+  printf("\nEnter key: "); //введем ключ
+  scanf("%d", &iKey);
+ 
+  node = TreeSearch(root, iKey); //ищем ключ
+  if (node)
+   PrintNode(node);  //выводим ключ и Info
+  else
+   printf("Key not found");
+ }
+ else
+  printf ("\nN
+ o tree");
+}
+
+//поиск узла наиболее отличающегося по значению к заданному ключу
+//т.к. имеем бинарное дерево, то достаточн
+о проверить
+//только самый левый и самый правый узлы
+void SearchFarKey(void)
+{
+ int  iKey, iMax;
+ Node *nodeMin, *nodeMax;
+
+ if (root)      //проверим на существование дерева
+ {
+  printf("\nEnter key: "); //введем ключ
+  scanf("%d", &iKey);
+ 
+  nodeMin = TreeMinimum(root);//найдем самого левого, он же минимальный
+  iMax = abs(nodeMin->key - iKey); //расстояние от введенного ключа
+  nodeMax = TreeMaximum(root);//найдем самого правого, он же максимальный
+
+  if
+(iMax > abs(nodeMax->key - iKey)) //сравним
+   PrintNode(nodeMin);  //минимальный дальше
+  else
+   PrintNode(nodeMax);  //максимальный дальше
+ }
+ else
+  printf ("\nNo tree");
+}
+
+//вывод в порядке ключей
+//идем от минимального до максимального
+void PrintSequential(void)
+{
+ Node *node;
+
+ if (root)      //проверим на существование дерева
+ {
+  for(node=TreeMinimum(root);node;node=TreeNext(n
+ ode))
+  {
+   printf("\n");
+   PrintNode(node);  //выводим
+  }
+ }
+ else
+  printf ("\nNo tree");
+}
+
+//формирование и вывод строки при выводе дерева в виде дерева
+//параметры: заполненная структура OutTree и количество значений
+void PrintLine(OutTree * ot, int count)
+{
+ char line[84];    //буфер для вывода (84, чтобы было кратно 4)
+ char sNum[16];    //буфер для преобразования числа в строку
+ int  i, j, k;
+
+ strnset(line, ' ', 80);   //опробелим
+80 позиций
+ line[80] = 0;     //закроем строку
+ for (i=0; i<count; i++)   //по всем выводимым значаениям
+ {
+  //k - позиция в строке, начиная с которой будем выводить число
+  //для уменьшения ошибок округления считается как вещественное (80.),
+  //затем округляется до целого
+  k = (int)((80./(1<<(ot[i].level+1))) * ((ot[i].offset<<1)+1) - 1);
+  //преобразуем число в строку
+  itoa(ot[i].node->key, sNum, 10);
+ 
+  //скопируем в нужное место
+  for(j=0; sNum[j]; j++,k++)
+   line[k] = sNum[j];
+ }
+ //выведем
+ printf("\n");
+ printf(line);
+}
+
+//вывод дерева в виде дерева
+//испольуюся два массива и два счетчика:
+//один набор используется, как исходный, второй - результат,
+//потом наоборот. Переключаются переменной k
+void PrintTree(void)
+{
+ OutTree ot[2][20];    //массив струтур для кодирования данных
+ int  count[2];    //количество
+ int  i, j;
+ int  k = 0;     //начинаем
+с массива 0
+
+ if (root)      //проверим на существование дерева
+ {
+  //сформируем одну запись для корня
+  ot[k][0].node = root;  //узел
+  ot[k][0].level = 0;   //уровень
+  ot[k][0].offset = 0;  //поле
+  count[k]=1;     //количество
+
+  while (1)     //бесконечный цикл
+  {
+   PrintLine(ot[k],count[k]); //выведем
+ 
+   //формируем информацию для следующей строки
+   for (j=i=0; i<count[k]; i++)
+   {
+    //k - инд
+ екс предыдущего массива
+    //k^1 - индекс формируемого массива
+    //если есть левый потомок
+    if (ot[k][i].node->left)
+    {
+     //адрес потомка
+     ot[k^1][j].node = ot[k][i].node->left;
+     //уровень на 1 больше
+     ot[k^1][j].level = ot[k][i].level + 1;
+     //поле в 2 раза больше
+     ot[k^1][j++].offset = ot[k][i].offset << 1;
+    }
+    //если есть правый потомок
+    if (ot[k][i].node->right)
+    {
+     //адрес потомка
+     ot[k^1][j].node
+= ot[k][i].node->right;
+     //уровень на 1 больше
+     ot[k^1][j].level = ot[k][i].level + 1;
+     //поле = * 2 + 1
+     ot[k^1][j++].offset = (ot[k][i].offset << 1) + 1;
+    }
+   }
+   k ^= 1;     //меняем индекс
+   count[k] = j;   //сохраняем количество
+   if (j==0)    //если ничего нет, то выход
+    break;
+  }
+ }
+ else
+  printf ("\nNo tree");
+}
+
+//ввод данных из текстового файла
+//Ключ 1
+//Информация 1
+//Ключ 2
+//......
+void GetTextFile(void)
+{
+ char filename[256];
+ char line[256];
+ int  key;
+
+ p
+rintf ("\nInput file name: "); //запрашиваем имя файла
+ gets(filename);
+ if (filename[0])    //если имя введено
+ {
+  FILE* file = fopen (filename, "r"); //открываем
+ 
+  if (file)     //если открыто
+  {
+   FreeTree(root);   //освобождаем старое дерево
+   root = NULL;   //обнуляем корень
+   while(1)    //бесконечный цикл
+   {
+    if (fgets(line, 256, file)) //читаем строку с ключом
+    {
+     key = atoi(line);//преобразуем в число
+     if (fgets(line,
+256, file)) //читаем строку с Info
+     {
+      if (line[strlen(line)-1] == 0x0a)
+       line[strlen(line)-1] = 0;//удаляем последний код 0ah
+      NodeInsert(key, line); //добавляем узел
+     }
+     else
+      break;
+    }
+    else
+     break;
+   }
+   fclose (file);   //закрываем файл
+   printf ("Success.");
+  }
+  else
+   printf ("Error. File not found.");
+ }
+ else
+  printf("Reenter fi
+ le name.");
+}
+
+int Menu () //вывод меню
+{
+ int  c;
+ 
+ printf("1. Add new key.\n2. Delete key.\n");
+ printf("3. Search any key\n4. Search far key\n");
+ printf("5. Print on sequential order.\n6. Print tree structure.\n");
+ printf("7. Get tree from file.\n8. Reorganization.\n9. Exit.\n");
+ printf("Enter menu item: ");
+ 
+ c = getch();     //читаем код
+ putch(c);      //выведем
+ 
+ while (c<='0' || c>'9')   //проверим
+на допустимость
+ {
+  printf("\nUncorrect! Reenter: ");
+  c = getch();
+  putch(c);
+ }
+ return c-'0';
+}
+
+//рекурентная подпрограмма формирования сбалансированного дерева
+//параметры: адрес массива узлов, индексы начала и конца
+void NodeInsertNew(Node ** NodeArr, int iBegin, int iEnd)
+{
+ int  iMiddle = (iBegin + iEnd)/2; //середина
+ Node *node = NodeArr[iMiddle];  //узел середины участка<
+ br> Node *nodeRing;
+
+ NodeInsert(node->key, node->str);  //заносим в дерево
+
+ //заносим кольцо
+ for (nodeRing=node->head; nodeRing && (nodeRing!=node); 
+  nodeRing=nodeRing->head)
+  NodeInsert(nodeRing->key, nodeRing->str);
+ 
+ //отработаем левый участок
+ if (iBegin != iMiddle)
+  NodeInsertNew(NodeArr, iBegin, iMiddle);
+ //правый участок
+ if (iEnd > iMiddle+1)
+  NodeInsertNew(NodeArr, iMiddle+1, iEnd);
+}
+
+//балансировка дерева
+void Reorganisation(void)
+{
+ Node *node;
+ Node *rootOld
+= root;  //корень старого дерева
+ Node **nodeArr;    //массив адресов узлов
+ int  i, count;
+
+ if (root)      //проверим на существование дерева
+ {
+  //посчитаем количество
+  for(count=0,node=TreeMinimum(root);node;node=TreeNext(node))
+   count++;
+  //запросим память под массив
+  nodeArr = (Node**)malloc(count * sizeof(int));
+  //сохраним, для удобства, адреса узлов м обычном массиве<
+ br>  for(i=0,node=TreeMinimum(root);node;node=TreeNext(node))
+   nodeArr[i++] = node;
+
+  root = NULL;    //строим новое дерево
+  
+  NodeInsertNew(nodeArr, 0, count); //извлекаем данные из массива и создаем новое дерево
+
+  FreeTree(rootOld);     //освободим память
+  printf ("\nComplete.");
+ }
+ else
+  printf ("\nNo tree");
+}
+
+int main(int argc, char* argv[])
+{
+ while (1)
+ {
+  system ("cls");    //очистка экрана
+  switch (Menu())    //вывод
+меню и получение кода выбора
+  { 
+   case 1: 
+    AddKey();   //добавление узла с ключом
+    break;
+   case 2: 
+    DeleteKey();  //удаление узла с ключом
+    break;
+   case 3: 
+    SearchKey();  //поиск ключа
+    break;
+   case 4: 
+    SearchFarKey();  //поиск самого дальнего ключа
+    break;
+   case 5: 
+    PrintSequential(); //последовательный вывод
+    break;
+   case 6: 
+    PrintTree();  //вывод в 
+ виде дерева
+    break;
+   case 7: 
+    GetTextFile();  //ввод из некстового файла
+    break;
+   case 8:
+    Reorganisati
+on(); //балансировка дерева
+    break;
+   case 9: 
+    printf("\n");  //выход
+    return 0;
+  }
+  printf ("\nPress any key to continue.");
+  getch ();
+ }
+ FreeTree(root);     //освободим память
+ return 0;
+}
