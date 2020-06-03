@@ -1,0 +1,184 @@
+#include <locale>
+#include <iostream>
+#include <string.h>
+using namespace std;
+bool Find(int, int*);
+void AddElement(void);
+void DelElement(void);
+void OutTable(void);
+void Exit(void);
+int GetNum(void);
+const int   SIZE = 10;   //максимальный размер таблицы
+typedef struct Item
+{
+   int      key;      //ключ элемента
+   char   *info;      //указатель на информацию
+}ITEM;
+const char *mesMain[] =      //сообщения меню
+{
+   "Добавить новый элемент",
+   "Удалить элемент",
+   "Вывести таблицу",
+   "Выход"
+};
+//количество пунктов меню
+int MesMainCount = sizeof( mesMain ) / sizeof( mesMain[0] );
+//функции отработки пунктов меню
+void ( *funcMain[] )() ={AddElement, DelElement, OutTable, Exit};
+int      count = 0;      //количество задействованных элементов таблицы
+ITEM   table[SIZE];   //таблица
+//поиск по таблице в памяти элемента с заданным ключем
+//использован агоритм двоичного поиска
+//возвращает true, если найдено, и индекс найденного элемента
+//false, если не найдено, и индекс, куда надо вставить новый элемент!
+//элементы в таблице сортируются по возрастанию ключей
+bool Find(int key, int *idx)
+{
+   int first = 0;      /* Первый элемент в массиве */
+    int last = count;   /* Элемент в массиве, СЛЕДУЮЩИЙ ЗА последним */
+                  /* Если просматриваемый участок непустой, first<last */
+    int   mid; 
+ 
+   if ((count == 0) || (table[0].key > key))
+   {
+      /* массив пуст или меньше всех, надо вставить его в позицию 0    */
+      *idx = 0;
+      return false;
+   } 
+   else if (table[count-1].key < key)
+    {
+      /* больше всех, надо вставить его в позицию count    */
+      *idx = count;
+      return false;
+   }
+ 
+   //где-то в середине...
+   while (first < last)
+   {
+      /* ВНИМАНИЕ! В отличие от более простого (first+last)/2, этот код стоек к переполнениям.
+         Если first и last знаковые, возможен код (unsigned)(first+last) >> 1.    */
+      mid = first + (last - first) / 2;
+ 
+      if (key <= table[mid].key)
+         last = mid;
+      else
+         first = mid + 1;
+    }
+ 
+    if (table[last].key == key)
+    {
+      /* Искомый элемент найден. last - искомый индекс */
+      *idx = last;
+      return true;
+    } 
+   else
+   {
+      /* Искомый элемент не найден. Его место - last.  */
+      *idx = last;
+      return false;
+   }
+}
+//добавление элемента в таблицу
+void AddElement()
+{
+   int      i, idx, num;
+   char   str[80];
+   if (count < SIZE)            //есть ли место в таблице?
+   {
+      cout << "Введите ключ элемента: ";
+      num = GetNum();            //вводим ключ нового элемента
+      if (Find(num, &idx))      //есть ли такой в таблице и получаем индекс, куда вставлять
+      {
+         cout << "Элемент с таким ключем уже есть" << endl;
+         return;
+      }
+      if (count)               //если что-то есть
+         for (i=count-1; i>=idx; i--)   //то смещаем на одну позицию к концу
+            table[i+1] = table[i];      //тем самым, освобождаем место для нового
+      table[idx].key = num;      //запоминаем ключ
+      cout << "Введите строку: ";
+      cin.ignore();            //сбросим все лишнее на входе
+      cin.getline(str, 80);      //вводим строку
+                           //запишем данные в элемент таблицы 
+      table[idx].info = new char[strlen(str)+1];
+      strcpy(table[idx].info, str);
+      count++;
+   }
+   else
+      cout << "Таблица полностью заполнена" << endl;
+}
+//удаление элемента таблицы по ключу
+void DelElement()
+{
+   int      idx, num;
+   cout << "Введите ключ элемента: ";
+   num = GetNum();               //вводим ключ   
+   if (!Find(num, &idx))         //есть такой? Заодно узнаем индекс элемента
+   {
+      cout << "Элемент с таким ключем отсутствует" << endl;
+      return;
+   }
+   delete [] table[idx].info;      //освободим память строки удаляемого элемента
+   for (; idx<count-1; idx++)      //смещаем на одну позицию к началу
+      table[idx] = table[idx+1];   //тем самым, удаляем элемент
+   count--;                  //уменьшаем счетчик элементов
+   cout << "Элемент удален" << endl;
+}
+//вывод всей таблицы на экран
+void OutTable()
+{
+   if (count)                  //что-то есть?
+   {
+      for(int i=0; i<count; i++)   //по всем элементам
+         cout << i << ": key = " << table[i].key << "\tinfo = " << table[i].info << endl;
+   }
+   else
+      cout << "Таблица пуста" << endl;
+}
+//конец работы
+void Exit()
+{   //освободим память под строки
+   for (int i=0; i<count; i++)
+      delete [] table[i].info;
+}
+//ввод целого числа с консоли
+int GetNum()
+{
+   int      a;
+   cin >> a;
+   while ( !( cin.good() || cin.eof() ) || ( a < 0 ) )
+   {
+      cout << "Введите число! " << endl;
+      cin.ignore();
+      cin >> a;
+   }
+   return a;
+}
+//вывод меню и ввод пункта меню
+int ViewMenu(const char* mes[], int max)
+{
+   int ret;
+   do
+   {
+      for ( int i = 0; i < max; i++ )
+         cout << i+1 << ". " << mes[i] << endl;
+      cout << "Ваш выбор: ";
+      ret = GetNum();
+   }
+   while ( ret < 1 || ret > max );   //проверяем на допустимость
+   return ret;                  //возвращаем номер пункта
+}
+int main()
+{
+   int ret;
+   setlocale(LC_ALL,"Russian");         //чтобы писалось по-русски
+   do
+   {
+      ret = ViewMenu(mesMain, MesMainCount);   //рисуем меню и вводим пункт меню
+      funcMain[ret-1]();                  //отрабатываем пункт меню
+      cout << "--------------------------------" << endl;
+      if (ret == MesMainCount)   //Exit, как последний пункт меню?
+         break;               //уходим!
+   } while (ret);
+   return 0;
+}
