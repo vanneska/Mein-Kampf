@@ -1,0 +1,573 @@
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <malloc.h>
+#include <conio.h>
+#include <iostream>
+
+using namespace std;
+
+typedef struct INF
+{
+
+char * data;
+struct INF *nextPtr;
+}INF;
+
+//структура для хранения узла дерева
+typedef struct NODE
+{
+int key;
+INF * info;
+NODE * pLeft;//ссылка на левого потомка
+NODE * pRight;//ссылка на правого потомка
+NODE * pParent;
+}NODE;
+
+
+typedef struct TREE
+{
+NODE * pRoot;
+}TREE;
+
+char * message[] = { "1. Add new item", // включение нового элемента в таблицу без нарушения свойств упорядоченности
+"2. Remove item", //удаление из таблицы элемента, заданного своим ключом
+"3. Find item by key", //поиск информации по заданному ключу
+"4. View", // вывод всего содержимого таблицы в обратном порядке следования ключей
+"5. Find node with leastkey", // поиск элемента соответствтвующего значению наименьшего ключа
+"6. Input tree from file",//загрузка дерева из файла
+"7. Output tree to file",//выгрузка дерева в файл
+"8. Exit" }; // выход
+
+//количество пунктов меню
+int MesCount = sizeof( message ) / sizeof( message[0] );
+//функции отработки пунктов меню
+void AddItem( TREE & tree );
+void RemoveItem( TREE & tree );
+void FindAt( TREE & tree );
+void View( TREE & tree );
+
+void PrintNodeWithLeastKey( TREE & tree );
+void Exit( TREE & tree );
+
+int ViewMenu();
+int GetNum();
+
+void Init( TREE & tree );
+void Write( TREE & tree );
+
+//создание узла дерева
+NODE * CreateNode( int key, char * info );
+NODE * GetAt( TREE tree, int key );
+NODE * GetNodeWithPrevKey( NODE * pNode );
+void InsertAt( TREE & tree, int key, char * info );
+void ReleaseNode( NODE * pNode );
+void PrintNode( NODE * pNode, int offset );
+int keycmp( int key1, int key2 );
+
+void ( *func[] )( TREE & ) =
+{ NULL, AddItem, RemoveItem, FindAt, View, PrintNodeWithLeastKey, Init, Write, Exit };
+
+int main()
+{
+TREE tree;
+int ret;
+
+Init( tree );
+
+do
+{
+ret = ViewMenu();//выводим меню
+func[ret]( tree );
+if ( ret == MesCount )//последняя - выход
+break;
+}
+while ( ret );
+
+return 0;
+}
+
+//показ меню с вводом номера строки
+int ViewMenu()
+{
+int ret;
+do
+{
+cout << "_________________________" << endl;
+cout << endl << "Please, select:\n";
+for ( int i = 0; i < MesCount; i++ )
+cout << message[i] << endl;
+cout << "_________________________" << endl;
+ret = GetNum();
+}
+//проверим на допустимость
+while ( ret < 1 || ret > MesCount );
+return ret;
+}
+
+int GetNum()
+{
+int a;
+cin >> a;
+while ( !( cin.good() || cin.eof() ) || ( a < 0 ) )
+{
+cout << "Wrong value!" << endl;
+cin.clear();
+cin.ignore();
+cin >> a;
+}
+return a;
+}
+
+void AddItem( TREE & tree )
+{
+char info[256];
+int key;
+
+cout << "Please, enter the key: ";
+key = GetNum();
+
+/*if ( GetAt( tree, key ) )
+{
+cout << "Error: Key collision!" << endl;
+return;
+}*/
+cout << "please, enter the information: ";
+cin >> info;
+InsertAt( tree, key, info );
+}
+
+// Функция удаления элементам по его ключу.
+void RemoveItem( TREE & tree )
+{
+int key, iInf, i;
+NODE * pNode, * pParent, * pTemp, * pMin;
+INF * pInf, * pNextInf, * pPrevInf;
+cout << "Please, enter the key: ";
+
+key = GetNum();
+if ( ( pNode = GetAt( tree, key ) ) == NULL )
+{
+cout << "can not found element with the key = " << key << endl;
+return;
+}
+
+if (pNode->info->nextPtr)
+{
+cout << "Please, enter key number: ";
+iInf = GetNum();
+}
+else
+iInf = 0;
+
+if ((iInf == 0) || (pNode->info->nextPtr == NULL))
+{
+pParent = ( NODE* ) pNode->pParent;
+pTemp = NULL;
+
+if ( !pNode->pLeft )
+pTemp = ( NODE* ) pNode->pRight;
+else if ( !pNode->pRight )
+pTemp = ( NODE* ) pNode->pLeft;
+
+if ( pTemp )
+{
+pParent = ( NODE* ) pNode->pParent;
+if ( pParent )
+{
+if ( pParent->pLeft == pNode )
+{
+pParent->pLeft = pTemp;
+pTemp->pParent = pParent;
+}
+else if ( pParent->pRight == pNode )
+{
+pParent->pRight = pTemp;
+pTemp->pParent = pParent;
+}
+}
+else if ( pNode == tree.pRoot )
+{
+tree.pRoot = pTemp;
+pTemp->pParent = NULL;
+}
+}
+else
+{
+pMin = ( NODE* ) pNode->pRight;
+if ( pMin )
+{
+while ( pMin->pLeft )
+pMin = ( NODE* ) pMin->pLeft;
+
+pMin->pLeft = ( NODE* ) pNode->pLeft;
+( ( NODE* ) pNode->pLeft )->pParent = pMin;
+
+pTemp = ( NODE* ) pMin->pParent;
+
+if ( pTemp != pNode )
+{
+if ( pTemp->pLeft == pMin )
+{
+pTemp->pLeft = pMin->pRight;
+if ( pMin->pRight )
+( ( NODE* ) pMin->pRight )->pParent = pTemp;
+}
+else
+{
+pTemp->pRight = pMin->pRight;
+if ( pMin->pRight )
+( ( NODE* ) pMin->pRight )->pParent = pTemp;
+}
+pMin->pRight = pNode->pRight;
+( ( NODE* ) pNode->pRight)->pParent = pMin;
+}
+if ( pParent )
+{
+if ( pParent->pLeft == pNode )
+{
+pParent->pLeft = pMin;
+pMin->pParent = pParent;
+}
+else
+{
+pParent->pRight = pMin;
+pMin->pParent = pParent;
+}
+}
+}
+else
+{
+pParent = ( NODE* ) pNode->pParent;
+if ( pParent )
+{
+if ( pParent->pRight == pNode )
+pParent->pRight = NULL;
+else
+pParent->pLeft = NULL;
+}
+}
+if ( pNode == tree.pRoot)
+if (pNode->info->nextPtr==NULL)
+{
+tree.pRoot = pMin;
+if ( pMin )
+pMin->pParent = NULL;
+}
+}
+for (pInf=pNode->info; pInf; pInf=pNextInf)
+{
+pNextInf = pInf->nextPtr;
+delete []pInf->data;
+delete pInf;
+}
+delete [] pNode;
+}
+else
+{
+for (pPrevInf=NULL,pInf=pNode->info,i=1;pInf && (i!=iInf);
+i++,pPrevInf=pInf,pInf=pInf->nextPtr);
+if ((i==iInf) && pInf)
+{
+if (pPrevInf==NULL)
+pNode->info = pInf->nextPtr;
+else
+pPrevInf->nextPtr = pInf->nextPtr;
+delete [] pInf->data;
+delete pInf;
+}
+}
+}
+
+// Функция вывода элемента по его ключу.
+void FindAt( TREE & tree )
+{
+NODE * pNode;
+INF * pInf;
+int key;
+
+cout << "Please, enter the key: ";
+key = GetNum();
+//поиск элемента, если NULL нечего в нем искать
+if ( ( pNode = GetAt( tree, key ) ) == NULL )
+{
+cout << "can not found element with the key = " << key << endl;
+return;
+}
+cout<< "information: ";
+for (pInf=pNode->info; pInf; pInf=pInf->nextPtr)
+cout << pInf->data << " ";
+cout << endl;
+}
+
+void ViewKey( NODE * pNode)
+{
+INF * pInf;
+
+cout << pNode->key << "(";
+for (pInf=pNode->info; pInf; pInf=pInf->nextPtr)
+{
+cout << pInf->data;
+if (pInf->nextPtr)
+cout << ",";
+else
+cout << ") ";
+}
+}
+
+// Функция отображения всех элементов дерева.
+void View( TREE & tree )
+{
+NODE * pNode = tree.pRoot;
+
+if ( !pNode )
+{
+cout << endl << "Tree is empty!" << endl;
+return;
+}
+
+while ( pNode->pRight )
+pNode = ( NODE* ) pNode->pRight;
+
+ViewKey(pNode);
+
+while ( pNode = GetNodeWithPrevKey( pNode ) )
+ViewKey(pNode);
+
+cout << endl << endl << endl;
+
+int offset = 0;
+PrintNode( tree.pRoot, offset );
+cout << endl;
+}
+
+// функция отображения элемента с минимальным ключём
+void PrintNodeWithLeastKey( TREE & tree )
+{
+INF * pInf;
+NODE * pNode = tree.pRoot;
+if ( !pNode )
+{
+cout << "tree is empty" << endl;
+return;
+}
+while ( pNode->pLeft )
+pNode = ( NODE* ) pNode->pLeft;
+cout << "the least node is: " << pNode->key << endl;
+cout<< "information: ";
+for (pInf=pNode->info; pInf; pInf=pInf->nextPtr)
+cout << pInf->data << " ";
+cout << endl;
+}
+
+// Выход из программы.
+void Exit( TREE & tree )
+{
+//Swap( tree );
+ReleaseNode( tree.pRoot );
+}
+
+// Функция загрузки дерева из файла "load.txt".
+void Init( TREE & tree )
+{
+char str[256], key[256], info[256];
+
+memset( &tree, 0x00, sizeof( TREE ) );
+FILE * pFile = fopen( "./load.txt", "r" );
+if ( !pFile )
+{
+cout << "can not open file!" << endl;
+return;
+}
+for ( int cntr = 1; fscanf( pFile, "%s", str ) != -1; cntr++)
+{
+if ( cntr % 2 != 0 )
+strcpy( key, str );
+else
+strcpy( info, str );
+
+if ( strlen( key ) && strlen( info ) && cntr > 1 )
+{
+InsertAt( tree, atoi( key ), info );
+info[0] = '\0';
+key[0] = '\0';
+}
+}
+cout << "loading from file complete" << endl;
+fclose( pFile );
+}
+
+void WriteNode(FILE *pFile, NODE * pNode)
+{
+INF * pInf;
+char key[32];
+
+for (pInf=pNode->info; pInf; pInf=pInf->nextPtr)
+fprintf(pFile, "%d\n%s\n", pNode->key, pInf->data);
+if (pNode->pLeft)
+WriteNode(pFile, pNode->pLeft);
+if (pNode->pRight)
+WriteNode(pFile, pNode->pRight);
+}
+
+// Функция записи дерева в файл "load.txt".
+void Write( TREE & tree )
+{
+NODE * pNode = tree.pRoot;
+
+FILE * pFile = fopen( "./load.txt", "w" );
+if ( !pFile )
+{
+cout << "can not open file!" << endl;
+return;
+}
+if ( !pNode )
+{
+cout << "tree is empty" << endl;
+}
+else
+WriteNode(pFile, pNode);
+cout << "writing to file complete" << endl;
+fclose( pFile );
+}
+
+// функция создания нового элемента
+NODE * CreateNode( int key, char * info )
+{
+NODE * pNode;
+
+pNode = ( NODE* ) new NODE;
+memset( pNode, 0x00, sizeof( NODE ) );
+
+pNode->key = key;
+
+if ( info )
+{
+pNode->info = new INF;
+pNode->info->data = new char[strlen( info )+1];
+strcpy( pNode->info->data, info );
+pNode->info->nextPtr = NULL;
+}
+return pNode;
+}
+
+// функция возвращает элемент по его ключу
+NODE * GetAt( TREE tree, int key )
+{
+if ( !tree.pRoot )
+return NULL;
+NODE * pNode = tree.pRoot;
+while ( pNode )
+{
+int res = keycmp( pNode->key, key );
+if ( res < 0 )
+pNode = ( NODE* ) pNode->pRight;
+else if ( !res )
+return pNode;
+else
+pNode = ( NODE* ) pNode->pLeft;
+}
+return NULL;
+}
+
+// функция возвращает элемент предшестующий данному
+NODE * GetNodeWithPrevKey( NODE * pNode )
+{
+NODE * pNext;
+if ( !pNode )
+return NULL;
+if ( pNode->pLeft != NULL )
+{
+pNext = ( NODE* ) pNode->pLeft;
+while ( pNext->pRight )
+pNext = ( NODE* ) pNext->pRight;
+return pNext;
+}
+pNext = ( NODE* ) pNode->pParent;
+while ( pNext && pNext->pLeft == pNode )
+{
+pNode = pNext;
+pNext = ( NODE* ) pNode->pParent;
+}
+return pNext;
+}
+
+// Функция добавления нового элемента.
+void InsertAt( TREE & tree, int key, char * info )
+{
+NODE *pNode;
+INF *pInf, *pPrevInf;
+
+NODE * pTemp, * pPrev;
+if ( !tree.pRoot )
+{
+tree.pRoot = CreateNode( key, info );
+return;
+}
+pTemp = tree.pRoot;
+while ( pTemp )
+{
+pPrev = pTemp;
+int res = keycmp( pTemp->key, key );
+if ( res < 0 )
+pTemp = ( NODE* ) pTemp->pRight;
+else if ( res > 0 )
+pTemp = ( NODE* ) pTemp->pLeft;
+else
+{
+for (pInf=pTemp->info; pInf; pPrevInf=pInf,pInf=pInf->nextPtr);
+pInf = new INF;
+pPrevInf->nextPtr = pInf;
+pInf->data = new char[strlen( info )+1];
+strcpy( pInf->data, info );
+pInf->nextPtr = NULL;
+return;
+}
+}
+pNode = CreateNode( key, info );
+int res = keycmp( pPrev->key, pNode->key );
+if ( res < 0 )
+pPrev->pRight = pNode;
+else
+pPrev->pLeft = pNode;
+pNode->pParent = pPrev;
+}
+
+// Функция освобождения динамической памяти, занятой элементом и всему дочерними элементами.
+void ReleaseNode( NODE * pNode )
+{
+INF *pInf, *pNextInf;
+if ( pNode )
+{
+if ( pNode->pRight )
+ReleaseNode( ( NODE* ) pNode->pRight );
+if ( pNode->pLeft )
+ReleaseNode( ( NODE* ) pNode->pLeft );
+for (pInf=pNode->info; pInf; pInf=pNextInf)
+{
+pNextInf = pInf->nextPtr;
+delete []pInf->data;
+delete pInf;
+}
+delete [] pNode;
+}
+}
+
+// Рекурсивная функция печати элемента и всех его дочерних элементов.
+void PrintNode( NODE * pNode, int offset )
+{
+if ( pNode )
+{
+PrintNode( ( NODE* ) pNode->pRight, offset + 1 );
+for ( int i = 0; i < offset; i++ )
+cout << " ";
+cout << pNode->key << endl;
+PrintNode( ( NODE* ) pNode->pLeft, offset + 1 );
+}
+}
+
+// функция сравнения ключей
+int keycmp( int key1, int key2 )
+{
+return key1 - key2;
+}
