@@ -1,0 +1,214 @@
+#include <iostream>
+#include <stdexcept>
+#include <locale>
+#include <limits>
+template<class T> class array;
+// Тип данных с которым будем работать. По условию int.
+typedef int data_t;
+// Тип для формируемого вектора
+typedef array<data_t> data_vector;
+// Класс - массив
+template<class T>
+class array
+{
+public:
+    // Конструкторы/деструктор
+    array(size_t count = 0);
+    array(const array<T>& r);
+    virtual ~array();
+    // Оператор присваивания
+    const array<T>& operator=(const array<T>& r);
+    // Изменение размера
+    void resize(size_t count);
+    // Размер
+    size_t size() const;
+    // Индексация массива
+    T& operator[](size_t index);
+    const T& operator[](size_t index) const;
+private:
+    void copy(const array<T>& r);
+    void destroy();
+    size_t _size;
+    T* _data;
+};
+// Оператор вывода
+template<class char_t, class traits_t, class T>
+std::basic_ostream<char_t, traits_t>& operator<<(std::basic_ostream<char_t, traits_t>& stream, const array<T>& right)
+{
+    const std::ctype<char_t>& facet = std::use_facet< std::ctype<char_t> >(stream.getloc());
+    for (size_t i = 0, end = right.size(); i < end; ++i)
+    {
+        stream << facet.widen(' ') << right[i];
+    }
+    return stream << std::endl;
+}
+// Используем для ввода данных
+template<class T> T input()
+{
+    T result = T();
+    std::cin >> result;
+    if (std::cin.fail())
+    {
+        throw std::runtime_error("Ошибка ввода");
+    }
+    return result;
+}
+// Сравнивает вектора и возвращает результат согласно условия
+unsigned int compareRows(const data_vector& vec1, const data_vector& vec2)
+{
+    unsigned int result = 0;
+    for (size_t i = 0, end_i = vec1.size(); i < end_i; ++i)
+    {
+        const data_t& item = vec1[i];
+        size_t j, end_j;
+        for (j = 0, end_j = vec2.size(); j < end_j && item != vec2[j]; ++j);
+        result += j == end_j;
+    }
+    return result;
+}
+/*
+ *
+ */
+int main(int argc, char** argv)
+{
+    try
+    {
+        std::locale::global(std::locale(""));
+        // Ввод данных
+        array< array<data_t> > matr(input<size_t >());
+        for (size_t row = 0, end = matr.size(); row < end; ++row)
+        {
+            matr[row].resize(input<size_t >());
+            for (size_t col = 0, end = matr[row].size(); col < end; ++col)
+            {
+                matr[row][col] = input<data_t >();
+            }
+        }
+        // Выведем для проверки
+        std::cout << "Исходная матрица: " << std::endl << matr;
+        // Формируем вектор
+        data_vector vec(matr.size());
+        for (size_t row = 0, end = matr.size(); row < end; ++row)
+        {
+            vec[row] = compareRows(matr[row], matr[(row + 1) % end]);
+        }
+        // Выводим вектор
+        std::cout << "Вектор:" << std::endl << vec << std::endl;
+        std::cout << std::endl;
+    }
+    catch (std::exception& ex)
+    {
+        std::cerr << ex.what() << std::endl;
+    }
+#ifdef _WIN32
+    std::system("pause");
+#endif
+    return 0;
+}
+template<class T>
+array<T>::array(size_t count)
+    : _data(0)
+    , _size(0)
+{
+    try
+    {
+        _data = new T[count];
+        _size = count;
+    }
+    catch (std::bad_alloc&)
+    {
+        throw std::runtime_error("Не могу выделить память");
+    }
+}
+template<class T>
+array<T>::~array()
+{
+    destroy();
+}
+template<class T>
+array<T>::array(const array<T>& r)
+    : _data(0)
+    , _size(0)
+{
+    copy(r);
+}
+template<class T>
+const array<T>& array<T>::operator =(const array<T>& r)
+{
+    copy(r);
+    return *this;
+}
+template<class T>
+void array<T>::copy(const array<T>& r)
+{
+    if (this == &r)
+    {
+        return;
+    }
+    try
+    {
+        destroy();
+        _data = new T[r._size];
+        _size = r._size;
+        for (size_t i = 0; i < _size; ++i)
+        {
+            _data[i] = r._data[i];
+        }
+    }
+    catch (std::bad_alloc&)
+    {
+        throw std::runtime_error("Не могу выделить память");
+    }
+}
+template<class T>
+void array<T>::destroy()
+{
+    if (_data)
+    {
+        delete[] _data;
+        _size = 0;
+        _data = 0;
+    }
+}
+template<class T>
+void array<T>::resize(size_t count)
+{
+    try
+    {
+        T* newData = new T[count];
+        for (size_t i = 0, end = std::min(_size, count); i < end; ++i)
+        {
+            newData[i] = _data[i];
+        }
+        delete[] _data;
+        _size = count;
+        _data = newData;
+    }
+    catch (std::bad_alloc&)
+    {
+        throw std::runtime_error("Не могу выделить память");
+    }
+}
+template<class T>
+size_t array<T>::size() const
+{
+    return _size;
+};
+template<class T>
+T& array<T>::operator [](size_t index)
+{
+    if (index < _size)
+    {
+        return _data[index];
+    }
+    throw std::runtime_error("Выход за пределы диапазона");
+}
+template<class T>
+const T& array<T>::operator [](size_t index) const
+{
+    if (index < _size)
+    {
+        return _data[index];
+    }
+    throw std::runtime_error("Выход за пределы диапазона");
+}
