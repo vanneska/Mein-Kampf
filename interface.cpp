@@ -1,20 +1,34 @@
 #include "interface.h"
+#include <ctime>
 
-void read(int& n, int& m) {
-	cout << "Vvedite m i n: " << endl;
-	cin >> n >> m;
+using std::cin;
+using std::cout;
+using std::endl;
+
+int interface::read_sizes(int& m, int& n) {
+	cout << "Vvedite m: " << endl;
+	cin >> m;
+	if (!cin.good()) {
+		return -1;
+	}
+	cout << "Vvedite n: " << endl;
+	cin >> n;
+	if (!cin.good()) {
+		return -1;
+	}
+	return 1;
 }
 
-void read(int** a, int n, int m) {
-	cout << "Vvedite matricu: " << endl;
+void interface::read_matrix(vector<vector<int>>& a, int n, int m) {
+	srand(time(0));
 	for (int i = 0; i < n; i++) {
 		for (int j = 0; j < m; j++) {
-			cin >> a[i][j];
+			a[i][j] = rand() % 100 + 1;
 		}
 	}
 }
 
-void print(int** a, int n, int m) {
+void interface::print_matrix(vector<vector<int>>& a, int n, int m) {
 	cout << "Ishodnaya matrica: " << endl;
 	for (int i = 0; i < n; i++) {
 		for (int j = 0; j < m; j++) {
@@ -24,7 +38,7 @@ void print(int** a, int n, int m) {
 	}
 }
 
-void print(int* b, int n) {
+void interface::print_array(vector<int>& b, int n) {
 	cout << "Poluchennyi vector: " << endl;
 	for (int i = 0; i < n; i++) {
 		cout << b[i] << ' ';
@@ -32,8 +46,7 @@ void print(int* b, int n) {
 	cout << endl;
 }
 
-
-void calculate(int* b, int** a, int n, int m) {
+void interface::calculate(vector<int>& b, const vector<vector<int>>& a, int n, int m) {
 	for (int i = 0; i < n; i++) {
 		bool all_positive = 1;
 		for (int j = 0; j < m; j++) {
